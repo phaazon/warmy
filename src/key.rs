@@ -1,8 +1,8 @@
 //! Module exporting all key types recognized by this crate.
 
 use any_cache::CacheKey;
-use std::hash::{Hash, Hasher};
 use std::fmt::{self, Display};
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::path::{Component, Path, PathBuf};
 
@@ -30,12 +30,13 @@ pub enum SimpleKey {
 }
 
 impl SimpleKey {
-  pub fn from_path<P>(path: P) -> Self where P: AsRef<Path> {
+  pub fn from_path<P>(path: P) -> Self
+  where P: AsRef<Path> {
     SimpleKey::Path(path.as_ref().to_owned())
   }
 }
 
-impl<'a>  From<&'a Path> for SimpleKey {
+impl<'a> From<&'a Path> for SimpleKey {
   fn from(path: &Path) -> Self {
     SimpleKey::from_path(path)
   }
@@ -51,7 +52,7 @@ impl Into<Option<PathBuf>> for SimpleKey {
   fn into(self) -> Option<PathBuf> {
     match self {
       SimpleKey::Path(path) => Some(path),
-      _ => None
+      _ => None,
     }
   }
 }
@@ -72,7 +73,7 @@ impl Display for SimpleKey {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     match *self {
       SimpleKey::Path(ref path) => write!(f, "{}", path.display()),
-      SimpleKey::Logical(ref name) => write!(f, "{}", name)
+      SimpleKey::Logical(ref name) => write!(f, "{}", name),
     }
   }
 }
@@ -108,12 +109,19 @@ impl<K, T> PrivateKey<K, T> {
   }
 }
 
-impl<K, T> Hash for PrivateKey<K, T> where K: Hash {
-  fn hash<H>(&self, state: &mut H) where H: Hasher {
+impl<K, T> Hash for PrivateKey<K, T>
+where K: Hash
+{
+  fn hash<H>(&self, state: &mut H)
+  where H: Hasher {
     self.0.hash(state)
   }
 }
 
-impl<K, T> CacheKey for PrivateKey<K, T> where T: 'static, K: Key {
+impl<K, T> CacheKey for PrivateKey<K, T>
+where
+  T: 'static,
+  K: Key,
+{
   type Target = Res<T>;
 }

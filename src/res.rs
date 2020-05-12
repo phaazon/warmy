@@ -1,9 +1,11 @@
 //! Shareable resources.
 
-#[cfg(feature = "arc")] use std::sync::{Arc, Mutex, MutexGuard};
-#[cfg(not(feature = "arc"))] use std::{
+#[cfg(feature = "arc")]
+use std::sync::{Arc, Mutex, MutexGuard};
+#[cfg(not(feature = "arc"))]
+use std::{
   cell::{Ref, RefCell, RefMut},
-  rc::Rc
+  rc::Rc,
 };
 
 /// Shareable resource type.

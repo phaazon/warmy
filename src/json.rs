@@ -6,9 +6,9 @@
 
 use serde::Deserialize;
 use serde_json::{self, from_reader};
-use std::io;
 use std::fmt;
 use std::fs::File;
+use std::io;
 use std::path::PathBuf;
 
 use crate::key::Key;
@@ -27,7 +27,7 @@ pub enum JsonError {
   /// The file specified by the key failed to open.
   CannotOpenFile(PathBuf, io::Error),
   /// The input key doesn’t provide enough information to open a file.
-  NoKey
+  NoKey,
 }
 
 impl fmt::Display for JsonError {
@@ -39,24 +39,21 @@ impl fmt::Display for JsonError {
         write!(f, "cannot open file {}: {}", path.display(), e)
       }
 
-      JsonError::NoKey => f.write_str("no path key available")
+      JsonError::NoKey => f.write_str("no path key available"),
     }
   }
 }
 
 impl<C, K, T> Load<C, K, Json> for T
-where K: Key + Into<Option<PathBuf>>,
-      T: 'static + for<'de> Deserialize<'de> {
+where
+  K: Key + Into<Option<PathBuf>>,
+  T: 'static + for<'de> Deserialize<'de>,
+{
   type Error = JsonError;
 
-  fn load(
-    key: K,
-    _: &mut Storage<C, K>,
-    _: &mut C
-  ) -> Result<Loaded<Self, K>, Self::Error> {
+  fn load(key: K, _: &mut Storage<C, K>, _: &mut C) -> Result<Loaded<Self, K>, Self::Error> {
     if let Some(path) = key.into() {
-      let file = File::open(&path)
-          .map_err(|ioerr| JsonError::CannotOpenFile(path, ioerr))?;
+      let file = File::open(&path).map_err(|ioerr| JsonError::CannotOpenFile(path, ioerr))?;
 
       from_reader(file)
         .map(Loaded::without_dep)

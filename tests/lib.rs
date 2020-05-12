@@ -7,7 +7,10 @@ use warmy::{Inspect, Load, Loaded, Res, SimpleKey, Storage, Store};
 
 fn with_tmp_dir<F, B>(f: F)
 where F: Fn(&Path) -> B {
-  let tmp_dir = Builder::new().prefix("warmy").tempdir().expect("create temporary directory");
+  let tmp_dir = Builder::new()
+    .prefix("warmy")
+    .tempdir()
+    .expect("create temporary directory");
   let _ = f(tmp_dir.path());
   tmp_dir.close().expect("close the temporary directory");
 }
@@ -30,13 +33,13 @@ struct Foo(String);
 
 #[derive(Debug, Eq, PartialEq)]
 enum TestErr {
-  WrongKey(SimpleKey)
+  WrongKey(SimpleKey),
 }
 
 impl fmt::Display for TestErr {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     match *self {
-      TestErr::WrongKey(ref key) => write!(f, "wrong key: {}", key)
+      TestErr::WrongKey(ref key) => write!(f, "wrong key: {}", key),
     }
   }
 }
@@ -44,7 +47,12 @@ impl fmt::Display for TestErr {
 impl<C> Load<C, SimpleKey> for Foo {
   type Error = TestErr;
 
-  fn load(key: SimpleKey, _: &mut Storage<C, SimpleKey>, _: &mut C) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  fn load(
+    key: SimpleKey,
+    _: &mut Storage<C, SimpleKey>,
+    _: &mut C,
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     if let SimpleKey::Path(ref key) = key {
       let mut s = String::new();
 
@@ -72,7 +80,12 @@ struct Stupid;
 impl<C> Load<C, SimpleKey, Stupid> for Foo {
   type Error = TestErr;
 
-  fn load(_: SimpleKey, _: &mut Storage<C, SimpleKey>, _: &mut C) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  fn load(
+    _: SimpleKey,
+    _: &mut Storage<C, SimpleKey>,
+    _: &mut C,
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     eprintln!("hello");
     let foo = Foo("stupid".to_owned());
     Ok(foo.into())
@@ -85,7 +98,12 @@ struct Bar(String);
 impl<C> Load<C, SimpleKey> for Bar {
   type Error = TestErr;
 
-  fn load(_: SimpleKey, _: &mut Storage<C, SimpleKey>, _: &mut C) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  fn load(
+    _: SimpleKey,
+    _: &mut Storage<C, SimpleKey>,
+    _: &mut C,
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     let bar = Bar("bar".to_owned());
     Ok(bar.into())
   }
@@ -97,7 +115,12 @@ struct Zoo(String);
 impl<C> Load<C, SimpleKey> for Zoo {
   type Error = TestErr;
 
-  fn load(key: SimpleKey, _: &mut Storage<C, SimpleKey>, _: &mut C) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  fn load(
+    key: SimpleKey,
+    _: &mut Storage<C, SimpleKey>,
+    _: &mut C,
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     if let SimpleKey::Logical(key) = key {
       let content = key.as_str().to_owned();
       let zoo = Zoo(content);
@@ -119,7 +142,8 @@ impl<C> Load<C, SimpleKey> for LogicalFoo {
     key: SimpleKey,
     storage: &mut Storage<C, SimpleKey>,
     ctx: &mut C,
-  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     if let SimpleKey::Logical(key) = key {
       let fs_key = Path::new(&key).into();
       let foo: Res<Foo> = storage.get(&fs_key, ctx).unwrap();
@@ -310,14 +334,14 @@ fn logical_with_deps() {
 #[derive(Debug, Eq, PartialEq)]
 struct Ctx {
   foo_nb: u32,
-  pew_nb: u32
+  pew_nb: u32,
 }
 
 impl Ctx {
   fn new() -> Self {
     Ctx {
       foo_nb: 0,
-      pew_nb: 0
+      pew_nb: 0,
     }
   }
 }
@@ -331,7 +355,9 @@ impl<'a> Inspect<'a, Ctx, &'a mut u32> for FooWithCtx {
   }
 }
 
-impl<C> Load<C, SimpleKey> for FooWithCtx where Self: for<'a> Inspect<'a, C, &'a mut u32> {
+impl<C> Load<C, SimpleKey> for FooWithCtx
+where Self: for<'a> Inspect<'a, C, &'a mut u32>
+{
   type Error = TestErr;
 
   fn load(
@@ -361,15 +387,18 @@ impl<'a> Inspect<'a, Ctx, &'a mut u32> for Pew {
 }
 
 impl<C> Load<C, SimpleKey> for Pew
-where Self: for<'a> Inspect<'a, C, &'a mut u32>,
-      FooWithCtx: for<'a> Inspect<'a, C, &'a mut u32> {
+where
+  Self: for<'a> Inspect<'a, C, &'a mut u32>,
+  FooWithCtx: for<'a> Inspect<'a, C, &'a mut u32>,
+{
   type Error = TestErr;
 
   fn load(
     _: SimpleKey,
     _: &mut Storage<C, SimpleKey>,
     ctx: &mut C,
-  ) -> Result<Loaded<Self, SimpleKey>, Self::Error> {
+  ) -> Result<Loaded<Self, SimpleKey>, Self::Error>
+  {
     // for the sake of the teste, just tap another resource as well
     *FooWithCtx::inspect(ctx) += 1;
 

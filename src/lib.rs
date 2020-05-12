@@ -574,14 +574,19 @@
 //! [RON]: https://github.com/ron-rs/ron
 
 pub mod context;
-#[cfg(feature = "json")] pub mod json;
-#[cfg(feature = "ron-impl")] pub mod ron;
-#[cfg(feature = "toml-impl")] pub mod toml;
+#[cfg(feature = "json")]
+pub mod json;
 pub mod key;
 pub mod load;
 pub mod res;
+#[cfg(feature = "ron-impl")]
+pub mod ron;
+#[cfg(feature = "toml-impl")]
+pub mod toml;
 
 pub use crate::context::Inspect;
 pub use crate::key::{Key, SimpleKey};
-pub use crate::load::{Discovery, Load, Loaded, Storage, Store, StoreError, StoreErrorOr, StoreOpt};
+pub use crate::load::{
+  Discovery, Load, Loaded, Storage, Store, StoreError, StoreErrorOr, StoreOpt,
+};
 pub use crate::res::Res;

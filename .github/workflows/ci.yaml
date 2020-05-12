@@ -2,7 +2,27 @@ name: CI
 on: [push]
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install nightly toolchain for RUST
+        run: rustup install nightly
+      - name: Check README.md synchronization
+        run: |
+          cargo install --force cargo-sync-readme
+          cargo sync-readme -c
+      - name: Check formatting
+        run: |
+          rustup component add rustfmt --toolchain nightly-x86_64-unknown-linux-gnu
+          cargo +nightly fmt --all -- --check
+      - name: Scan code
+        run: |
+          rustup component add clippy
+          cargo clippy --all-features -- -D warnings -A clippy::needless_doctest_main -A clippy::type_complexity
+
   build-linux:
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -12,6 +32,7 @@ jobs:
         run: cargo test --verbose
 
   build-linux-json:
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -21,6 +42,7 @@ jobs:
         run: cargo test --verbose --features json
 
   build-linux-ron:
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -30,6 +52,7 @@ jobs:
         run: cargo test --verbose --features ron-impl
 
   build-linux-toml:
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -39,6 +62,7 @@ jobs:
         run: cargo test --verbose --features toml-impl
 
   build-linux-arc:
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -48,6 +72,7 @@ jobs:
         run: cargo test --verbose --features arc
 
   build-windows:
+    needs: check
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
@@ -57,6 +82,7 @@ jobs:
         run: cargo test --verbose
 
   build-windows-json:
+    needs: check
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
@@ -66,6 +92,7 @@ jobs:
         run: cargo test --verbose --features json
 
   build-windows-ron:
+    needs: check
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
@@ -75,6 +102,7 @@ jobs:
         run: cargo test --verbose --features ron-impl
 
   build-windows-toml:
+    needs: check
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
@@ -84,6 +112,7 @@ jobs:
         run: cargo test --verbose --features toml-impl
 
   build-windows-arc:
+    needs: check
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
@@ -91,12 +120,3 @@ jobs:
         run: cargo build --verbose --features arc
       - name: Test (Arc support)
         run: cargo test --verbose --features arc
-
-  check-readme:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
-      - name: Install cargo-sync-readme
-        run: cargo install --force cargo-sync-readme
-      - name: Check
-        run: cargo sync-readme -c

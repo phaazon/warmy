@@ -98,9 +98,7 @@ pub trait Inspect<'a, Ctx, Inspected, Method = ()> {
 
 /// No-context universal implementor.
 impl<'a, T, C, M> Inspect<'a, C, (), M> for T {
-  fn inspect(_: &'a mut C) -> () {
-    ()
-  }
+  fn inspect(_: &'a mut C) {}
 }
 
 /// Immutable full-context universal implementator.

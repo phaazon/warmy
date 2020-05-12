@@ -32,8 +32,9 @@ use crate::res::Res;
 ///
 /// [`SimpleKey`]: crate::key::SimpleKey
 pub trait Load<C, K, Method = ()>: 'static + Sized
-where K: Key,
-      Method: ?Sized {
+where
+  K: Key,
+  Method: ?Sized, {
   /// Type of error that might happen while loading.
   type Error: Display + 'static;
 
@@ -43,22 +44,14 @@ where K: Key,
   ///
   /// The result type is used to register for dependency events. If you do not need any, you can
   /// lift your return value in [`Loaded`] with `your_value.into()`.
-  fn load(
-    key: K,
-    storage: &mut Storage<C, K>,
-    ctx: &mut C,
-  ) -> Result<Loaded<Self, K>, Self::Error>;
+  fn load(key: K, storage: &mut Storage<C, K>, ctx: &mut C)
+    -> Result<Loaded<Self, K>, Self::Error>;
 
   // FIXME: add support for redeclaring the dependencies?
   /// Function called when a resource must be reloaded.
   ///
   /// The default implementation of that function calls [`Load::load`] and returns its result.
-  fn reload(
-    &self,
-    key: K,
-    storage: &mut Storage<C, K>,
-    ctx: &mut C,
-  ) -> Result<Self, Self::Error> {
+  fn reload(&self, key: K, storage: &mut Storage<C, K>, ctx: &mut C) -> Result<Self, Self::Error> {
     Self::load(key, storage, ctx).map(|lr| lr.res)
   }
 }
@@ -127,8 +120,10 @@ pub struct Storage<C, K> {
   metadata: HashMap<K, ResMetaData<C, K>>,
 }
 
-impl<C, K> Storage<C, K> where K: Key {
-  fn new(canon_root: PathBuf) -> Self{
+impl<C, K> Storage<C, K>
+where K: Key
+{
+  fn new(canon_root: PathBuf) -> Self {
     Storage {
       canon_root,
       cache: HashCache::new(),
@@ -146,16 +141,11 @@ impl<C, K> Storage<C, K> where K: Key {
   ///
   /// The resource might be refused for several reasons. Further information in the documentation of
   /// the [`StoreError`] error type.
-  fn inject<T, M>(
-    &mut self,
-    key: K,
-    resource: T,
-    deps: Vec<K>,
-  ) -> Result<Res<T>, StoreError<K>>
+  fn inject<T, M>(&mut self, key: K, resource: T, deps: Vec<K>) -> Result<Res<T>, StoreError<K>>
   where T: Load<C, K, M> {
     // we forbid having two resources sharing the same key
     if self.metadata.contains_key(&key) {
-      return Err(StoreError::AlreadyRegisteredKey(key.clone()));
+      return Err(StoreError::AlreadyRegisteredKey(key));
     }
 
     // wrap the resource to make it shared mutably
@@ -185,7 +175,7 @@ impl<C, K> Storage<C, K> where K: Key {
       self
         .deps
         .entry(dep.clone().prepare_key(root))
-        .or_insert(Vec::new())
+        .or_insert_with(Vec::new)
         .push(key.clone());
     }
 
@@ -214,7 +204,9 @@ impl<C, K> Storage<C, K> where K: Key {
     ctx: &mut C,
     _: M,
   ) -> Result<Res<T>, StoreErrorOr<T, C, K, M>>
-  where T: Load<C, K, M> {
+  where
+    T: Load<C, K, M>,
+  {
     let key = key.clone().prepare_key(self.root());
 
     // move the key into pkey to prevent an allocation and remove it after use
@@ -244,11 +236,13 @@ impl<C, K> Storage<C, K> where K: Key {
     proxy: P,
     ctx: &mut C,
   ) -> Result<Res<T>, StoreError<K>>
-  where T: Load<C, K>,
-        P: FnOnce() -> T {
+  where
+    T: Load<C, K>,
+    P: FnOnce() -> T,
+  {
     self
       .get(key, ctx)
-      .or_else(|_| self.inject::<T, ()>(key.clone().into(), proxy(), Vec::new()))
+      .or_else(|_| self.inject::<T, ()>(key.clone(), proxy(), Vec::new()))
   }
 
   /// Get a resource from the [`Storage`] for the given key by using a specific method. If it fails, a
@@ -261,11 +255,13 @@ impl<C, K> Storage<C, K> where K: Key {
     ctx: &mut C,
     method: M,
   ) -> Result<Res<T>, StoreError<K>>
-  where T: Load<C, K, M>,
-        P: FnOnce() -> T {
+  where
+    T: Load<C, K, M>,
+    P: FnOnce() -> T,
+  {
     self
       .get_by(key, ctx, method)
-      .or_else(|_| self.inject::<T, M>(key.clone().into(), proxy(), Vec::new()))
+      .or_else(|_| self.inject::<T, M>(key.clone(), proxy(), Vec::new()))
   }
 }
 
@@ -281,7 +277,9 @@ pub enum StoreError<K> {
   AlreadyRegisteredKey(K),
 }
 
-impl<K> Display for StoreError<K> where K: Display {
+impl<K> Display for StoreError<K>
+where K: Display
+{
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     match *self {
       StoreError::RootDoesNotExist(ref path) => write!(f, "root {} doesn’t exist", path.display()),
@@ -291,7 +289,10 @@ impl<K> Display for StoreError<K> where K: Display {
 }
 
 /// Either a store error or a resource loading error.
-pub enum StoreErrorOr<T, C, K, M = ()> where T: Load<C, K, M>, K: Key {
+pub enum StoreErrorOr<T, C, K, M = ()>
+where
+  T: Load<C, K, M>,
+  K: Key, {
   /// A store error.
   StoreError(StoreError<K>),
   /// A resource error.
@@ -299,9 +300,11 @@ pub enum StoreErrorOr<T, C, K, M = ()> where T: Load<C, K, M>, K: Key {
 }
 
 impl<T, C, K, M> Clone for StoreErrorOr<T, C, K, M>
-where T: Load<C, K, M>,
-      T::Error: Clone,
-      K: Key {
+where
+  T: Load<C, K, M>,
+  T::Error: Clone,
+  K: Key,
+{
   fn clone(&self) -> Self {
     match *self {
       StoreErrorOr::StoreError(ref e) => StoreErrorOr::StoreError(e.clone()),
@@ -311,15 +314,19 @@ where T: Load<C, K, M>,
 }
 
 impl<T, C, K, M> Eq for StoreErrorOr<T, C, K, M>
-where T: Load<C, K, M>,
-      T::Error: Eq,
-      K: Key {
+where
+  T: Load<C, K, M>,
+  T::Error: Eq,
+  K: Key,
+{
 }
 
 impl<T, C, K, M> PartialEq for StoreErrorOr<T, C, K, M>
-where T: Load<C, K, M>,
-      T::Error: PartialEq,
-      K: Key {
+where
+  T: Load<C, K, M>,
+  T::Error: PartialEq,
+  K: Key,
+{
   fn eq(&self, rhs: &Self) -> bool {
     match (self, rhs) {
       (&StoreErrorOr::StoreError(ref a), &StoreErrorOr::StoreError(ref b)) => a == b,
@@ -330,9 +337,11 @@ where T: Load<C, K, M>,
 }
 
 impl<T, C, K, M> fmt::Debug for StoreErrorOr<T, C, K, M>
-where T: Load<C, K, M>,
-      T::Error: fmt::Debug,
-      K: Key + fmt::Debug {
+where
+  T: Load<C, K, M>,
+  T::Error: fmt::Debug,
+  K: Key + fmt::Debug,
+{
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     match *self {
       StoreErrorOr::StoreError(ref e) => f.debug_tuple("StoreError").field(e).finish(),
@@ -342,9 +351,11 @@ where T: Load<C, K, M>,
 }
 
 impl<T, C, K, M> Display for StoreErrorOr<T, C, K, M>
-where T: Load<C, K, M>,
-      T::Error: fmt::Debug,
-      K: Key + Display {
+where
+  T: Load<C, K, M>,
+  T::Error: fmt::Debug,
+  K: Key + Display,
+{
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
     match *self {
       StoreErrorOr::StoreError(ref e) => e.fmt(f),
@@ -366,25 +377,29 @@ struct Synchronizer<C, K> {
   // watcher receiver part of the channel
   watcher_rx: Receiver<DebouncedEvent>,
   // used to accept or ignore new discoveries
-  discovery: Discovery<C, K>
+  discovery: Discovery<C, K>,
 }
 
-impl<C, K> Synchronizer<C, K> where K: Key {
+impl<C, K> Synchronizer<C, K>
+where K: Key
+{
   fn new(
     watcher: RecommendedWatcher,
     watcher_rx: Receiver<DebouncedEvent>,
-    discovery: Discovery<C, K>
-  ) -> Self {
+    discovery: Discovery<C, K>,
+  ) -> Self
+  {
     Synchronizer {
       dirties: HashSet::new(),
       watcher,
       watcher_rx,
-      discovery
+      discovery,
     }
   }
 
   /// Dequeue any file system events.
-  fn dequeue_fs_events(&mut self, storage: &mut Storage<C, K>, ctx: &mut C) where K: for<'a> From<&'a Path> {
+  fn dequeue_fs_events(&mut self, storage: &mut Storage<C, K>, ctx: &mut C)
+  where K: for<'a> From<&'a Path> {
     for event in self.watcher_rx.try_iter() {
       match event {
         DebouncedEvent::Write(ref path) | DebouncedEvent::Create(ref path) => {
@@ -430,7 +445,8 @@ impl<C, K> Synchronizer<C, K> where K: Key {
   }
 
   /// Synchronize the [`Storage`] by updating the resources that ought to.
-  fn sync(&mut self, storage: &mut Storage<C, K>, ctx: &mut C) where K: for<'a> From<&'a Path> {
+  fn sync(&mut self, storage: &mut Storage<C, K>, ctx: &mut C)
+  where K: for<'a> From<&'a Path> {
     self.dequeue_fs_events(storage, ctx);
     self.reload_dirties(storage, ctx);
   }
@@ -442,7 +458,9 @@ pub struct Store<C, K> {
   synchronizer: Synchronizer<C, K>,
 }
 
-impl<C, K> Store<C, K> where K: Key {
+impl<C, K> Store<C, K>
+where K: Key
+{
   /// Create a new store.
   ///
   /// # Failures
@@ -478,7 +496,8 @@ impl<C, K> Store<C, K> where K: Key {
   }
 
   /// Synchronize the [`Store`] by updating the resources that ought to with a provided context.
-  pub fn sync(&mut self, ctx: &mut C) where K: for<'a> From<&'a Path> {
+  pub fn sync(&mut self, ctx: &mut C)
+  where K: for<'a> From<&'a Path> {
     self.synchronizer.sync(&mut self.storage, ctx);
   }
 }
@@ -503,7 +522,7 @@ impl<C, K> DerefMut for Store<C, K> {
 pub struct StoreOpt<C, K> {
   root: PathBuf,
   debounce_duration: Duration,
-  discovery: Discovery<C, K>
+  discovery: Discovery<C, K>,
 }
 
 impl<C, K> Default for StoreOpt<C, K> {
@@ -511,7 +530,7 @@ impl<C, K> Default for StoreOpt<C, K> {
     StoreOpt {
       root: PathBuf::from("."),
       debounce_duration: Duration::from_millis(50),
-      discovery: Discovery::default()
+      discovery: Discovery::default(),
     }
   }
 }
@@ -568,10 +587,7 @@ impl<C, K> StoreOpt<C, K> {
   /// Defaults to `Discovery::default()`.
   #[inline]
   pub fn set_discovery(self, discovery: Discovery<C, K>) -> Self {
-    StoreOpt {
-      discovery,
-      ..self
-    }
+    StoreOpt { discovery, ..self }
   }
 
   /// Get the discovery mechanism.
@@ -602,9 +618,10 @@ impl<C, K> Discovery<C, K> {
   /// all discovery, that’s also possible.
   ///
   /// [`get`]: crate::load::Storage::get
-  pub fn new<F>(f: F) -> Self where F: 'static + FnMut(&Path, &mut Storage<C, K>, &mut C) {
+  pub fn new<F>(f: F) -> Self
+  where F: 'static + FnMut(&Path, &mut Storage<C, K>, &mut C) {
     Discovery {
-      closure: Box::new(f)
+      closure: Box::new(f),
     }
   }
 
